@@ -159,11 +159,6 @@ footer{text-align:center;color:var(--faint);font-size:12px;padding:24px;border-t
       <div class="selection-summary" id="selection-summary"></div>
     </div>
 
-    <div class="card">
-      <div class="card-title">Other changes or metrics not covered above</div>
-      <div class="subtle" style="margin-bottom:12px">Share anything important that is not covered above. Goalkeep will review this and decide how best to include it in the ROI analysis.</div>
-      <div class="other-grid" id="other-metrics"></div>
-    </div>
 
     <div class="actions">
       <button type="button" class="btn secondary" onclick="showScreen(1)">← Back</button>
@@ -398,6 +393,7 @@ function goToMetrics(){
 
 function renderMetricSelection(){
   if(!configReady) return;
+  const currentOtherValues = getCurrentOtherMetricValues_();
   const availableMetrics = metrics.filter(m=>surveyType==='baseline' ? m.baselineEnabled!==false : m.endlineEnabled!==false);
   const groups = groupBy(availableMetrics,'area');
   let html='';
@@ -438,11 +434,40 @@ function renderMetricSelection(){
         <span><span class="metric-label">${escapeHtml(m.label)}</span><span class="metric-status ${statusClass}">${escapeHtml(statusText)}</span></span>
       </button>`;
     });
-    html += '</div>';
+    html += `</div>${otherMetricBoxHtml_(area, currentOtherValues[area] || '')}`;
   });
 
   document.getElementById('metric-selection').innerHTML=html;
   updateSelectionSummary();
+}
+
+function getCurrentOtherMetricValues_(){
+  const values = {};
+  (roiAreas||[]).forEach(area=>{
+    const el = document.getElementById(`other-${slugify(area)}`);
+    if(el) values[area] = el.value;
+  });
+  return values;
+}
+
+function otherMetricBoxHtml_(area, currentValue){
+  const record=loadedBaseline?.other_metrics?.find(item=>item.area===area)||{};
+  const slug=slugify(area);
+  if(surveyType==='baseline'){
+    return `<div class="other-box" style="margin-top:12px">
+      <h4>Other changes or metrics not covered above</h4>
+      <div class="subtle" style="margin-bottom:8px">Share anything important at the start that is not covered above. Goalkeep will review this and decide how best to include it in the ROI analysis.</div>
+      <textarea class="compact-notes" id="other-${slug}" placeholder="Example: Volunteer retention rate, time taken for field verification">${escapeHtml(currentValue||'')}</textarea>
+    </div>`;
+  }
+  return `<div class="other-box" style="margin-top:12px">
+    <h4>Other changes or metrics not covered above</h4>
+    <div class="subtle" style="margin-bottom:8px">Share any additional change, benefit, or metric that is not covered above. Goalkeep will review this and decide how best to include it in the ROI analysis.</div>
+    <div class="other-ref"><strong>Shared at Baseline for Goalkeep to consider:</strong><br>${escapeHtml(record.baseline_names||'None')}</div>
+    <div class="subtle" style="margin-bottom:8px">Goalkeep will review this and consider how best to include it in the ROI analysis.</div>
+    <label for="other-${slug}">Add anything new at Endline</label>
+    <textarea class="compact-notes" id="other-${slug}" placeholder="Separate multiple names with commas">${escapeHtml(currentValue || record.endline_names || '')}</textarea>
+  </div>`;
 }
 
 function toggleBaselineMetric(id){
@@ -472,20 +497,7 @@ function updateSelectionSummary(){
 }
 
 function renderOtherMetrics(){
-  if(!configReady) return;
-  const container=document.getElementById('other-metrics');
-  container.innerHTML=roiAreas.map(area=>{
-    const record=loadedBaseline?.other_metrics?.find(item=>item.area===area)||{};
-    const slug=slugify(area);
-    if(surveyType==='baseline'){
-      return `<div class="other-box"><h4>${escapeHtml(area)}</h4><textarea class="compact-notes" id="other-${slug}" placeholder="Example: Volunteer retention rate, time taken for field verification"></textarea></div>`;
-    }
-    return `<div class="other-box"><h4>${escapeHtml(area)}</h4>
-      <div class="other-ref"><strong>Shared at Baseline for Goalkeep to consider:</strong><br>${escapeHtml(record.baseline_names||'None')}</div>
-      <label for="other-${slug}">Add anything new at Endline</label>
-      <textarea class="compact-notes" id="other-${slug}" placeholder="Separate multiple names with commas">${escapeHtml(record.endline_names||'')}</textarea>
-    </div>`;
-  }).join('');
+  // Other metric fields are rendered inside each ROI area in renderMetricSelection().
 }
 
 function collectOtherMetrics(){
