@@ -79,6 +79,8 @@ footer{text-align:center;color:var(--faint);font-size:12px;padding:24px;border-t
   <div class="p-step"><div class="p-circle" id="pc4">4</div><span class="p-label" id="pl4">Done</span></div>
 </div>
 
+<div id="draft-alert" style="max-width:930px;margin:14px auto 0;padding:0 24px"></div>
+
 <section class="screen active" id="screen1">
   <div class="hero">
     <div class="eyebrow">Step 1 of 3</div>
@@ -87,7 +89,6 @@ footer{text-align:center;color:var(--faint);font-size:12px;padding:24px;border-t
   </div>
   <main>
     <div id="setup-alert"></div>
-    <div id="draft-alert"></div>
 
     <div class="card">
       <div class="card-title">What are you filling?</div>
@@ -458,19 +459,22 @@ function renderMetricSelection(){
 function otherMetricInlineHtml(area){
   const record=loadedBaseline?.other_metrics?.find(item=>item.area===area)||{};
   const slug=slugify(area);
-  const title = 'Other changes or metrics not covered above';
+  const title='Other changes or metrics not covered above';
   if(surveyType==='baseline'){
     const value = otherMetricsByArea[area] || record.baseline_names || '';
     return `<div class="other-box inline-other"><h4>${escapeHtml(title)}</h4>
-      <div class="help" style="margin-bottom:9px">Share anything important at the start that is not covered above. Goalkeep will review this and decide how best to include it in the ROI analysis.</div>
-      <textarea class="compact-notes" id="other-${slug}" data-area="${escapeAttr(area)}" oninput="setOtherMetrics(this.dataset.area,this.value)" placeholder="Optional: add anything important that is not listed above.">${escapeHtml(value)}</textarea></div>`;
+      <div class="help" style="margin-bottom:8px">Share anything important at the start that is not covered above. Goalkeep will review this and decide how best to include it in the ROI analysis.</div>
+      <textarea class="compact-notes" id="other-${slug}" data-area="${escapeAttr(area)}" oninput="setOtherMetrics(this.dataset.area,this.value)" placeholder="Optional: add anything important that is not covered above.">${escapeHtml(value)}</textarea>
+    </div>`;
   }
   const value = otherMetricsByArea[area] || record.endline_names || '';
   return `<div class="other-box inline-other"><h4>${escapeHtml(title)}</h4>
-    <div class="help" style="margin-bottom:9px">Share any additional change, benefit, or metric that is not covered above. Goalkeep will review this and decide how best to include it in the ROI analysis.</div>
-    <div class="other-ref"><strong>Shared at Baseline for Goalkeep to consider:</strong><br>${escapeHtml(record.baseline_names||'None')}<br><span class="help">Goalkeep will review this and consider how best to include it in the ROI analysis.</span></div>
+    <div class="help" style="margin-bottom:8px">Share any additional change, benefit, or metric that is not covered above. Goalkeep will review this and decide how best to include it in the ROI analysis.</div>
+    <div class="other-ref"><strong>Shared at Baseline for Goalkeep to consider:</strong><br>${escapeHtml(record.baseline_names||'None')}
+      <div class="help" style="margin-top:6px">Goalkeep will review this and consider how best to include it in the ROI analysis.</div>
+    </div>
     <label for="other-${slug}">Add anything new at Endline</label>
-    <textarea class="compact-notes" id="other-${slug}" data-area="${escapeAttr(area)}" oninput="setOtherMetrics(this.dataset.area,this.value)" placeholder="Optional: add anything new that is not listed above.">${escapeHtml(value)}</textarea>
+    <textarea class="compact-notes" id="other-${slug}" data-area="${escapeAttr(area)}" oninput="setOtherMetrics(this.dataset.area,this.value)" placeholder="Optional: add anything new that is not covered above.">${escapeHtml(value)}</textarea>
   </div>`;
 }
 
@@ -851,21 +855,22 @@ async function submitResponse(){
   };
 
   const button=document.getElementById('submit-btn');
-  button.disabled=true;button.textContent='Saving…';
   isSubmittingFinal=true;
-  updateDraftStatus('Current response is being submitted. Please do not close this page.','');
+  clearTimeout(draftSaveTimer);
+  updateDraftStatus('Current response is being submitted. Please do not close this page.','info');
+  button.disabled=true;button.textContent='Saving…';
   try{
     await fetch(SHEET_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
     const result=await waitForSubmission(clientSubmissionId);
     if(result.status!=='success') throw new Error(result.message||'The response could not be saved.');
+    updateDraftStatus('Current response saved and submitted.','success');
     document.getElementById('done-message').textContent=`${surveyType==='baseline'?'Baseline':'Endline'} response saved for ${details.organisation}.`;
     document.getElementById('engagement-output').innerHTML=`<div class="engagement-box"><small>${surveyType==='baseline'?'Save this Engagement ID. It will be needed at Endline.':'Submitted against Engagement ID'}</small><div class="engagement-id">${escapeHtml(result.engagement_id)}</div></div>`;
-    updateDraftStatus('Current response saved. This draft is now closed.','success');
     showScreen(4);
   }catch(error){
-    isSubmittingFinal=false;
     showSubmitError(`${error.message} Your answers are still on this page.`);
   }finally{
+    isSubmittingFinal=false;
     button.disabled=false;button.textContent='Submit response';
   }
 }
@@ -902,7 +907,8 @@ function showScreen(number){
 function resetApp(){
   isSubmittingFinal=false;
   draftReady=true;
-  surveyType='baseline';selectedMetricIds=new Set();baselineSelectedMetricIds=new Set();addedAtEndlineMetricIds=new Set();existingEndlineMetricIds=new Set();ratingState={};loadedBaseline=null;existingEndlineByMetric={};restoredMetricAnswersById={};
+  restoredMetricAnswersById={};
+  surveyType='baseline';selectedMetricIds=new Set();baselineSelectedMetricIds=new Set();addedAtEndlineMetricIds=new Set();existingEndlineMetricIds=new Set();ratingState={};loadedBaseline=null;existingEndlineByMetric={};
   clearDetails();unlockDetails();document.getElementById('engagement-id-input').value='';document.getElementById('baseline-load-message').innerHTML='';document.getElementById('engagement-output').innerHTML='';hideSubmitError();
   document.getElementById('baseline-type').classList.add('active');document.getElementById('endline-type').classList.remove('active');document.getElementById('endline-load-card').style.display='none';document.getElementById('type-note').textContent="Baseline captures where things are today, before the engagement creates change.";
   if(configReady){renderRatings();renderMetricSelection();renderOtherMetrics();}
@@ -917,7 +923,7 @@ async function initDraftAutosave(){
   const existingDraftId=new URLSearchParams(window.location.search).get('draft');
   if(existingDraftId){
     draftId=existingDraftId;
-    updateDraftStatus('Loading saved response progress…','');
+    updateDraftStatus('Loading saved progress…','');
     try{
       const result=await jsonp(SHEET_URL,{action:'getDraft',draft_id:draftId});
       if(result.status==='success' && result.draft_status==='Submitted'){
@@ -925,7 +931,7 @@ async function initDraftAutosave(){
         updateDraftStatus('The previous saved link was already submitted. A new saved link has been created.','success');
       }else if(result.status==='success'){
         await restoreDraft(result.draft_payload||{});
-        updateDraftStatus('Saved response progress restored. Use this same link if you need to continue later.','success');
+        updateDraftStatus('Saved progress restored. Use this same link if you need to continue later.','success');
       }else{
         updateDraftStatus('Current response will be saved on this link as you fill the form.','');
       }
@@ -944,7 +950,7 @@ function startNewDraft(){
   const url=new URL(window.location.href);
   url.searchParams.set('draft',draftId);
   window.history.replaceState({},'',url.toString());
-  updateDraftStatus('Current response will be saved on this link as you fill the form.','');
+  updateDraftStatus('Current response is saved on this link as you fill the form.','');
 }
 
 function attachDraftListeners(){
@@ -978,18 +984,18 @@ async function saveDraftNow(){
     draft_payload:buildDraftPayload()
   };
   try{
-    updateDraftStatus('Current response is saving…','');
+    updateDraftStatus('Current response is saving…','info');
     await fetch(SHEET_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
     updateDraftStatus('Current response saved on this link.','success');
   }catch(error){
-    updateDraftStatus('Current response could not be autosaved right now. Keep this tab open and try again when internet is stable.','error');
+    updateDraftStatus('Current response could not be saved right now. Keep this tab open and try again when internet is stable.','error');
   }
 }
 
 function buildDraftPayload(){
   const active=document.querySelector('.screen.active')?.id||'screen1';
   return {
-    version:'v2.4.1-index-only',
+    version:'v2.4.1-working-base',
     screen:Number(active.replace('screen',''))||1,
     survey_type:surveyType,
     engagement_id_input:document.getElementById('engagement-id-input')?.value.trim()||'',
@@ -1081,7 +1087,7 @@ function applyRestoredMetricAnswers(){
     setIfExists(`reason-added-${id}`,answer.reason_added_at_endline||'');
     toggleRetroBaseline(id);
     setIfExists(`what-changed-${id}`,answer.what_changed||'');
-    setIfExists(`endline-comments-${id}`,answer.comments_notes||'');
+    setIfExists(`endline-comments-${id}`,answer.comments_notes||answer.evidence||'');
     if(answer.monetisable) setMonetisable(id,answer.monetisable);
     setIfExists(`value-per-unit-${id}`,answer.value_per_unit||'');
     setIfExists(`value-basis-${id}`,answer.value_basis||'');
