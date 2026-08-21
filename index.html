@@ -1103,8 +1103,17 @@ function applyRestoredMetricAnswers(){
     setIfExists(`value-per-unit-${id}`,answer.value_per_unit||'');
     setIfExists(`value-basis-${id}`,answer.value_basis||'');
     if(answer.attribution_bucket){
-      const btn=Array.from(document.querySelectorAll(`#attr-${cssEscape(id)} .attr-btn`)).find(item=>item.dataset.bucket===answer.attribution_bucket);
-      if(btn) setAttribution(id,btn);
+      const buttons = Array.from(
+        document.querySelectorAll(`#attr-${cssEscape(id)} .attr-btn`)
+      );
+    
+      const btn = buttons.find(
+        item => item.dataset.bucket === answer.attribution_bucket
+      );
+    
+      if(btn){
+        setAttribution(id, btn);
+      }
     }
     setIfExists(`attr-reason-${id}`,answer.attribution_reason||'');
     setIfExists(`external-use-${id}`,answer.external_use_permission||'');
