@@ -204,7 +204,7 @@ footer{text-align:center;color:var(--faint);font-size:12px;padding:24px;border-t
 
 <script>
 // Replace this with the V2 Apps Script Web App /exec URL.
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycby2pj9YB0uVKUVAXNtj634Pm5txlnhlML_XHfwzwtiUETA1Q0hZZHhtuxual3Z8P81O/exec';
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzLYs5uTGUPSUSfBmAbaYiV4OJ7L-HJwFszQAj6ZMONAqDFXgHM6QZS_vbOGmZo7Llm/exec';
 
 const AREA_META = {
   'Financial ROI': {key:'financial', icon:'₹'},
@@ -740,9 +740,19 @@ function toggleRetroBaseline(metricId){
 }
 
 function setMonetisable(metricId,value){
-  document.querySelectorAll(`#monetise-${cssEscape(metricId)} .choice-btn`).forEach(btn=>btn.classList.toggle('active',btn.textContent.trim()===value));
-  document.getElementById(`monetise-${metricId}`).dataset.value=value;
-  document.getElementById(`money-details-${metricId}`).classList.toggle('show',value==='Yes');
+  const container=document.getElementById(`monetise-${metricId}`);
+  if(!container) return;
+
+  container.querySelectorAll('.choice-btn').forEach(btn=>{
+    btn.classList.toggle('active',btn.textContent.trim()===value);
+  });
+
+  container.dataset.value=value;
+
+  const details=document.getElementById(`money-details-${metricId}`);
+  if(details){
+    details.classList.toggle('show',value==='Yes');
+  }
 }
 
 function setAttribution(metricId,button){
@@ -1106,11 +1116,11 @@ function applyRestoredMetricAnswers(){
       const buttons = Array.from(
         document.querySelectorAll(`#attr-${cssEscape(id)} .attr-btn`)
       );
-    
+
       const btn = buttons.find(
         item => item.dataset.bucket === answer.attribution_bucket
       );
-    
+
       if(btn){
         setAttribution(id, btn);
       }
